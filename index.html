@@ -3,82 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus | Temp Mail & Call</title>
+    <title>Nexus | Video, Voice & Mail</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #05060a;
-            --card-glass: rgba(255, 255, 255, 0.03);
-            --neon-blue: #00f0ff;
-            --neon-purple: #bc13fe;
-            --text-main: #f8fafc;
-            --text-dim: #64748b;
-            --error: #ff4d4d;
+            --bg: #030407;
+            --glass: rgba(255, 255, 255, 0.04);
+            --neon: #00f0ff;
+            --purple: #bc13fe;
+            --text: #ffffff;
+            --dim: #94a3b8;
+            --danger: #ff3e3e;
             --success: #00ff88;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* UI Containers */
-        main { flex: 1; padding: 1.5rem; overflow-y: auto; padding-bottom: 80px; }
-        .view { display: none; animation: slideUp 0.3s ease-out; max-width: 800px; margin: 0 auto; }
+        /* Scannable Layout */
+        main { flex: 1; overflow-y: auto; padding: 1.2rem; padding-bottom: 90px; }
+        .view { display: none; animation: fadeIn 0.3s ease; max-width: 600px; margin: 0 auto; }
         .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        /* UI Elements */
+        .glass-card { background: var(--glass); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 1.5rem; margin-bottom: 1rem; backdrop-filter: blur(10px); }
+        .email-row { background: #000; border-radius: 12px; padding: 12px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #1e293b; margin-bottom: 10px; }
+        
+        /* Video Elements */
+        .video-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 15px 0; position: relative; }
+        video { width: 100%; border-radius: 16px; background: #000; object-fit: cover; border: 1px solid var(--glass); }
+        #remote-video { height: 300px; }
+        #local-video { width: 120px; height: 160px; position: absolute; bottom: 10px; right: 10px; border: 2px solid var(--neon); z-index: 10; }
 
-        /* Mobile Bottom Nav */
-        .mobile-nav {
-            position: fixed; bottom: 0; width: 100%; height: 70px;
-            background: rgba(10, 11, 16, 0.95); backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex; justify-content: space-around; align-items: center; z-index: 1000;
-        }
-        .nav-item { color: var(--text-dim); text-align: center; font-size: 0.7rem; cursor: pointer; transition: 0.3s; }
+        /* Control Bar */
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
+        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+        .btn-call { background: var(--success); color: #000; }
+        .btn-hangup { background: var(--danger); color: #fff; }
+        .btn-video { background: var(--purple); color: #fff; }
+
+        /* Navigation */
+        nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(5, 6, 10, 0.9); border-top: 1px solid var(--glass); display: flex; justify-content: space-around; align-items: center; }
+        .nav-item { color: var(--dim); text-align: center; font-size: 0.75rem; cursor: pointer; }
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
-        .nav-item.active { color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
+        .nav-item.active { color: var(--neon); }
 
-        /* Glass Cards */
-        .glass-card {
-            background: var(--card-glass); border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px; padding: 1.5rem; margin-bottom: 1.2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
+        /* OTP Specific */
+        .otp-display { background: linear-gradient(to right, rgba(0,240,255,0.1), rgba(188,19,254,0.1)); border: 1px dashed var(--neon); border-radius: 16px; padding: 20px; text-align: center; margin: 10px 0; }
+        .otp-code { font-size: 2.5rem; font-weight: 800; letter-spacing: 8px; color: var(--neon); display: block; }
 
-        .email-display {
-            background: #000; border-radius: 12px; padding: 12px;
-            display: flex; align-items: center; justify-content: space-between;
-            font-family: monospace; border: 1px solid #1e293b;
-        }
-
-        /* Buttons */
-        .btn {
-            background: none; border: 1px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer;
-            transition: 0.2s; display: inline-flex; align-items: center; gap: 8px;
-        }
-        .btn:active { transform: scale(0.95); opacity: 0.8; }
-        .btn-full { width: 100%; justify-content: center; }
-
-        /* Email List & OTP */
-        .email-item {
-            padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);
-            background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 12px;
-        }
-        .otp-box {
-            background: linear-gradient(45deg, rgba(0,240,255,0.1), rgba(188,19,254,0.1));
-            border: 1px solid var(--neon-blue); padding: 15px; border-radius: 12px;
-            text-align: center; margin-top: 10px;
-        }
-        .otp-code { font-size: 2.2rem; font-weight: 800; letter-spacing: 6px; color: var(--neon-blue); display: block; margin-bottom: 10px; }
-
-        /* Toast Notifications */
-        #toast {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: var(--neon-blue); color: #000; padding: 10px 20px;
-            border-radius: 30px; font-weight: bold; z-index: 2000; display: none;
-        }
+        #toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--neon); color: #000; padding: 8px 20px; border-radius: 20px; font-weight: bold; z-index: 2000; display: none; }
     </style>
 </head>
 <body>
@@ -87,252 +63,227 @@
 
     <main>
         <section id="mail-view" class="view active">
-            <h2 style="margin-bottom: 1rem;">Temp Inbox</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>Temp Mail</h2>
+                <button onclick="App.createInbox()" style="background:var(--neon); border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">New</button>
+            </div>
             <div class="glass-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <span id="timer" style="color: var(--error); font-size: 0.8rem;">Ready</span>
-                    <button class="btn" style="padding: 8px 12px;" onclick="App.createInbox()">New Inbox</button>
-                </div>
-                <div class="email-display">
-                    <span id="email-addr" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px;">Click New Inbox</span>
-                    <i class="fas fa-copy" onclick="App.copy('email-addr')" style="cursor:pointer; color: var(--neon-blue)"></i>
+                <div class="email-row">
+                    <span id="email-addr" style="font-family:monospace; font-size:0.9rem; overflow:hidden;">Loading...</span>
+                    <i class="fas fa-copy" onclick="App.copy('email-addr')" style="color:var(--neon); padding-left:10px;"></i>
                 </div>
             </div>
-
-            <div id="email-list">
-                <div style="text-align: center; color: var(--text-dim); margin-top: 50px;">
-                    <i class="fas fa-inbox fa-3x" style="margin-bottom: 15px;"></i>
-                    <p>No messages yet. Waiting for incoming mail...</p>
-                </div>
-            </div>
+            <div id="email-feed"></div>
         </section>
 
         <section id="call-view" class="view">
-            <h2 style="margin-bottom: 1rem;">Secure Call</h2>
-            <div class="glass-card">
-                <label style="color: var(--text-dim); font-size: 0.8rem;">Your Peer ID</label>
-                <div class="email-display" style="margin: 8px 0;">
-                    <span id="my-id">Initializing...</span>
-                    <i class="fas fa-copy" onclick="App.copy('my-id')" style="color: var(--neon-blue)"></i>
+            <h2>Multimedia Call</h2>
+            <div class="glass-card" style="padding:1rem;">
+                <p style="color:var(--dim); font-size:0.8rem; margin-bottom:5px;">Your Nexus ID:</p>
+                <div class="email-row">
+                    <span id="my-id">Connecting...</span>
+                    <i class="fas fa-copy" onclick="App.copy('my-id')" style="color:var(--neon)"></i>
                 </div>
             </div>
 
-            <div class="glass-card">
-                <input type="text" id="remote-id" placeholder="Enter Friend's ID" style="width:100%; background: #000; border:1px solid #333; color:#fff; padding:15px; border-radius:12px; margin-bottom:15px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button class="btn" onclick="Calls.startCall()"><i class="fas fa-phone"></i> Call</button>
-                    <button class="btn" style="border-color: var(--neon-purple); color: var(--neon-purple);" onclick="Calls.random()"><i class="fas fa-random"></i> Random</button>
+            <div id="call-interface">
+                <input type="text" id="remote-id" placeholder="Friend's Nexus ID" style="width:100%; background:#000; border:1px solid #333; color:#fff; padding:15px; border-radius:15px; margin-bottom:15px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button class="glass-card" style="margin:0; border-color:var(--success); color:var(--success);" onclick="Comm.initCall(false)"><i class="fas fa-phone"></i> Audio</button>
+                    <button class="glass-card" style="margin:0; border-color:var(--purple); color:var(--purple);" onclick="Comm.initCall(true)"><i class="fas fa-video"></i> Video</button>
                 </div>
             </div>
 
-            <div id="call-active" class="glass-card" style="display:none; border-color: var(--success);">
-                <div style="text-align: center;">
-                    <h3 id="call-status">Connected</h3>
-                    <div id="recording-indicator" style="color: var(--error); margin: 10px 0;"><i class="fas fa-record-vinyl fa-spin"></i> Recording...</div>
-                    <button class="btn" style="border-color: var(--error); color: var(--error);" onclick="Calls.endCall()">End Call</button>
-                    <div id="playback-area" style="margin-top:15px; display:none;">
-                        <audio id="audio-out" controls style="width: 100%;"></audio>
-                    </div>
+            <div id="active-screen" style="display:none;">
+                <div class="video-grid">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <video id="local-video" autoplay playsinline muted></video>
+                </div>
+                <div id="rec-status" style="text-align:center; color:var(--danger); display:none; font-size:0.8rem; margin-bottom:10px;">
+                    <i class="fas fa-circle fa-beat"></i> Recording Call...
+                </div>
+                <div class="controls">
+                    <button class="circle-btn btn-hangup" onclick="Comm.endCall()"><i class="fas fa-phone-slash"></i></button>
+                </div>
+                <div id="rec-download" style="display:none; margin-top:15px; text-align:center;">
+                    <a id="dl-link" style="color:var(--neon); text-decoration:none; font-size:0.9rem;"><i class="fas fa-download"></i> Download Recording</a>
                 </div>
             </div>
         </section>
 
-        <section id="history-view" class="view">
-            <h2 style="margin-bottom: 1rem;">History</h2>
-            <div id="history-container"></div>
-            <button class="btn btn-full" style="margin-top:20px; border-color:var(--error); color:var(--error)" onclick="App.clearHistory()">Clear History</button>
+        <section id="settings-view" class="view">
+            <h2>Inbox History</h2>
+            <div id="history-list" style="margin-top:15px;"></div>
+            <button onclick="App.clearAll()" class="glass-card" style="width:100%; color:var(--danger); border-color:var(--danger); margin-top:20px;">Wipe All Data</button>
         </section>
     </main>
 
-    <nav class="mobile-nav">
-        <div class="nav-item active" onclick="App.switch('mail-view', this)">
-            <i class="fas fa-envelope"></i><span>Mail</span>
-        </div>
-        <div class="nav-item" onclick="App.switch('call-view', this)">
-            <i class="fas fa-phone-alt"></i><span>Call</span>
-        </div>
-        <div class="nav-item" onclick="App.switch('history-view', this)">
-            <i class="fas fa-history"></i><span>History</span>
-        </div>
+    <nav>
+        <div class="nav-item active" onclick="App.switch('mail-view', this)"><i class="fas fa-envelope"></i>Mail</div>
+        <div class="nav-item" onclick="App.switch('call-view', this)"><i class="fas fa-video"></i>Call</div>
+        <div class="nav-item" onclick="App.switch('settings-view', this)"><i class="fas fa-history"></i>History</div>
     </nav>
 
     <script>
-        const API_KEY = "sk_FllbN62B80svK5hF_waWY0lEYgzVGd2EHeVU70ksxQ7kbSeJe7obqeGMuzlJuxM9va47TR0pL7wJNiOGC";
-        const OTP_REGEX = /\b\d{4,8}\b/;
+        const KEY = "sk_FllbN62B80svK5hF_waWY0lEYgzVGd2EHeVU70ksxQ7kbSeJe7obqeGMuzlJuxM9va47TR0pL7wJNiOGC";
+        const OTP_RX = /\b\d{4,8}\b/;
 
         const App = {
             inbox: null,
-            timer: 30 * 60,
-
             init() {
-                const saved = JSON.parse(localStorage.getItem('nexus_inbox') || 'null');
-                if(saved) this.loadInbox(saved.id, saved.emailAddress);
+                const last = JSON.parse(localStorage.getItem('last_inbox'));
+                if(last) this.setInbox(last.id, last.email);
+                else this.createInbox();
                 this.renderHistory();
             },
-
             async createInbox() {
-                const res = await fetch('https://api.mailslurp.com/inboxes', {
-                    method: 'POST',
-                    headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' }
+                const r = await fetch('https://api.mailslurp.com/inboxes', { 
+                    method: 'POST', 
+                    headers: { 'x-api-key': KEY, 'Content-Type': 'application/json' } 
                 });
-                const data = await res.json();
-                this.loadInbox(data.id, data.emailAddress);
-                this.saveHistory(data);
+                const d = await r.json();
+                this.setInbox(d.id, d.emailAddress);
+                this.saveToHistory(d.id, d.emailAddress);
             },
-
-            loadInbox(id, email) {
-                this.inbox = { id, email };
+            setInbox(id, email) {
+                this.inbox = {id, email};
                 document.getElementById('email-addr').innerText = email;
-                localStorage.setItem('nexus_inbox', JSON.stringify({id, emailAddress: email}));
-                this.startRefresh();
+                localStorage.setItem('last_inbox', JSON.stringify({id, email}));
+                if(window.mailLoop) clearInterval(window.mailLoop);
+                window.mailLoop = setInterval(() => this.fetchMail(), 5000);
+                this.fetchMail();
             },
-
-            startRefresh() {
-                if(window.refreshInt) clearInterval(window.refreshInt);
-                window.refreshInt = setInterval(() => this.checkMail(), 5000);
-                this.checkMail();
-            },
-
-            async checkMail() {
+            async fetchMail() {
                 if(!this.inbox) return;
-                const res = await fetch(`https://api.mailslurp.com/inboxes/${this.inbox.id}/emails`, {
-                    headers: { 'x-api-key': API_KEY }
-                });
-                const emails = await res.json();
-                this.renderEmails(emails);
+                const r = await fetch(`https://api.mailslurp.com/inboxes/${this.inbox.id}/emails`, { headers: {'x-api-key': KEY}});
+                const list = await r.json();
+                this.renderEmails(list);
             },
-
-            async renderEmails(emails) {
-                const container = document.getElementById('email-list');
-                if(emails.length === 0) return;
-
+            async renderEmails(list) {
+                const feed = document.getElementById('email-feed');
+                if(list.length === 0) {
+                    feed.innerHTML = `<p style="text-align:center; color:var(--dim); margin-top:40px;">No messages yet...</p>`;
+                    return;
+                }
                 let html = '';
-                for(let em of emails) {
-                    // Fetch full email content to find hidden OTPs
-                    const fullRes = await fetch(`https://api.mailslurp.com/emails/${em.id}`, {
-                        headers: { 'x-api-key': API_KEY }
-                    });
-                    const fullEm = await fullRes.json();
-                    
-                    const otp = fullEm.body.match(OTP_REGEX) || em.subject.match(OTP_REGEX);
+                for(let m of list) {
+                    // Fetch full body to extract OTP
+                    const fr = await fetch(`https://api.mailslurp.com/emails/${m.id}`, { headers: {'x-api-key': KEY}});
+                    const full = await fr.json();
+                    const code = full.body.match(OTP_RX) || m.subject.match(OTP_RX);
                     
                     html += `
-                        <div class="email-item">
-                            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-dim);">
-                                <span>From: ${em.from || 'System'}</span>
-                                <span>${new Date(em.createdAt).toLocaleTimeString()}</span>
+                        <div class="glass-card" style="padding:15px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--dim);">
+                                <span>${m.from || 'Sender'}</span>
+                                <span>${new Date(m.createdAt).toLocaleTimeString()}</span>
                             </div>
-                            <div style="margin: 8px 0; font-weight:600;">${em.subject}</div>
-                            ${otp ? `
-                                <div class="otp-box">
-                                    <span class="otp-code" id="otp-${em.id}">${otp[0]}</span>
-                                    <button class="btn btn-full" onclick="App.copy('otp-${em.id}')">Copy Code</button>
+                            <div style="margin:10px 0; font-weight:bold;">${m.subject}</div>
+                            ${code ? `
+                                <div class="otp-display">
+                                    <span class="otp-code" id="code-${m.id}">${code[0]}</span>
+                                    <button onclick="App.copy('code-${m.id}')" style="background:var(--neon); border:none; border-radius:8px; padding:5px 15px; margin-top:10px; font-weight:bold;">Copy OTP</button>
                                 </div>
                             ` : ''}
                         </div>
                     `;
                 }
-                container.innerHTML = html;
+                feed.innerHTML = html;
             },
-
-            copy(id) {
-                const text = document.getElementById(id).innerText;
-                navigator.clipboard.writeText(text);
-                const t = document.getElementById('toast');
-                t.style.display = 'block';
-                setTimeout(() => t.style.display = 'none', 2000);
-            },
-
-            switch(viewId, el) {
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                document.getElementById(viewId).classList.add('active');
-                el.classList.add('active');
-            },
-
-            saveHistory(data) {
-                let history = JSON.parse(localStorage.getItem('nexus_history') || '[]');
-                history.unshift(data);
-                localStorage.setItem('nexus_history', JSON.stringify(history.slice(0, 10)));
+            saveToHistory(id, email) {
+                let h = JSON.parse(localStorage.getItem('nexus_h') || '[]');
+                if(!h.find(x => x.id === id)) h.unshift({id, email});
+                localStorage.setItem('nexus_h', JSON.stringify(h.slice(0, 10)));
                 this.renderHistory();
             },
-
             renderHistory() {
-                const history = JSON.parse(localStorage.getItem('nexus_history') || '[]');
-                document.getElementById('history-container').innerHTML = history.map(h => `
-                    <div class="glass-card" style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:0.8rem;">${h.emailAddress}</span>
-                        <button class="btn" style="padding:5px 10px;" onclick="App.loadInbox('${h.id}', '${h.emailAddress}')">Use</button>
+                const h = JSON.parse(localStorage.getItem('nexus_h') || '[]');
+                document.getElementById('history-list').innerHTML = h.map(x => `
+                    <div class="email-row" style="font-size:0.8rem;">
+                        ${x.email}
+                        <button onclick="App.setInbox('${x.id}', '${x.email}')" style="background:none; border:1px solid var(--neon); color:var(--neon); border-radius:5px; padding:2px 8px;">Load</button>
                     </div>
                 `).join('');
             },
-
-            clearHistory() {
-                localStorage.clear();
-                location.reload();
-            }
+            copy(id) {
+                const t = document.getElementById(id).innerText;
+                navigator.clipboard.writeText(t);
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => toast.style.display = 'none', 2000);
+            },
+            switch(id, el) {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+                el.classList.add('active');
+            },
+            clearAll() { localStorage.clear(); location.reload(); }
         };
 
-        const Calls = {
+        const Comm = {
             peer: null,
-            conn: null,
+            call: null,
+            stream: null,
             recorder: null,
             chunks: [],
 
             init() {
-                this.peer = new Peer('nexus-' + Math.floor(Math.random()*10000));
+                this.peer = new Peer('nexus-' + Math.floor(Math.random()*9999));
                 this.peer.on('open', id => document.getElementById('my-id').innerText = id);
-                this.peer.on('call', async call => {
-                    if(confirm("Incoming Call?")) {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        call.answer(stream);
-                        this.handleStream(call);
+                this.peer.on('call', async c => {
+                    if(confirm("Incoming call! Accept?")) {
+                        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                        c.answer(s);
+                        this.handleCall(c, s);
                     }
                 });
             },
-
-            async startCall() {
-                const id = document.getElementById('remote-id').value;
-                if(!id) return;
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const call = this.peer.call(id, stream);
-                this.handleStream(call);
+            async initCall(video) {
+                const rid = document.getElementById('remote-id').value;
+                if(!rid) return alert("Enter Peer ID");
+                this.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+                document.getElementById('local-video').srcObject = this.stream;
+                const c = this.peer.call(rid, this.stream);
+                this.handleCall(c, this.stream);
             },
+            handleCall(c, s) {
+                this.call = c;
+                document.getElementById('call-interface').style.display = 'none';
+                document.getElementById('active-screen').style.display = 'block';
+                document.getElementById('local-video').srcObject = s;
 
-            handleStream(call) {
-                document.getElementById('call-active').style.display = 'block';
-                call.on('stream', remoteStream => {
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                    this.startRec(remoteStream);
+                c.on('stream', rs => {
+                    const rv = document.getElementById('remote-video');
+                    rv.srcObject = rs;
+                    this.startRec(rs);
                 });
+                c.on('close', () => this.endCall());
             },
-
-            startRec(stream) {
+            startRec(s) {
                 this.chunks = [];
-                this.recorder = new MediaRecorder(stream);
+                this.recorder = new MediaRecorder(s);
                 this.recorder.ondataavailable = e => this.chunks.push(e.data);
                 this.recorder.onstop = () => {
-                    const blob = new Blob(this.chunks, { type: 'audio/webm' });
-                    const url = URL.createObjectURL(blob);
-                    document.getElementById('audio-out').src = url;
-                    document.getElementById('playback-area').style.display = 'block';
+                    const b = new Blob(this.chunks, { type: 'video/webm' });
+                    const u = URL.createObjectURL(b);
+                    const link = document.getElementById('dl-link');
+                    link.href = u;
+                    link.download = `nexus_rec_${Date.now()}.webm`;
+                    document.getElementById('rec-download').style.display = 'block';
                 };
                 this.recorder.start();
+                document.getElementById('rec-status').style.display = 'block';
             },
-
             endCall() {
-                location.reload(); // Simplest way to reset WebRTC state
-            },
-
-            random() {
-                alert("Searching for users... No matches found in your region yet.");
+                if(this.recorder) this.recorder.stop();
+                if(this.stream) this.stream.getTracks().forEach(t => t.stop());
+                location.reload(); // Hard reset for WebRTC cleanup
             }
         };
 
         App.init();
-        Calls.init();
+        Comm.init();
     </script>
 </body>
 </html>
