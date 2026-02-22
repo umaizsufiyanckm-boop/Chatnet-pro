@@ -1,580 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ChatNet Pro - Media Edition</title>
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-<style>
-:root {
---primary: #0088cc;
---bg: #0E1621;
---surface: #17212B;
---surface-light: #242F3D;
---text: #F5F5F5;
---text-dim: #708499;
---bubble-me: #2B5278;
---bubble-other: #182533;
---status-online: #47A9FF;
---danger: #E53935;
---success: #4CAF50;
-}
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; transition: background 0.2s, transform 0.1s; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; overflow: hidden; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus | Temp Mail & Call</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #05060a;
+            --card-glass: rgba(255, 255, 255, 0.03);
+            --neon-blue: #00f0ff;
+            --neon-purple: #bc13fe;
+            --text-main: #f8fafc;
+            --text-dim: #64748b;
+            --error: #ff4d4d;
+            --success: #00ff88;
+        }
 
-    #app { width: 100%; max-width: 500px; height: 100%; margin: 0 auto; position: relative; display: flex; flex-direction: column; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* Sidebar Navigation */
-    #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: var(--surface); z-index: 2000; box-shadow: 5px 0 15px rgba(0,0,0,0.5); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; }
-    #sidebar.open { left: 0; }
-    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1900; display: none; }
-    .sidebar-overlay.active { display: block; }
-    
-    header { height: 60px; background: var(--surface); display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.2); }
-    header h2 { font-size: 18px; margin: 0; flex: 1; }
+        /* UI Containers */
+        main { flex: 1; padding: 1.5rem; overflow-y: auto; padding-bottom: 80px; }
+        .view { display: none; animation: slideUp 0.3s ease-out; max-width: 800px; margin: 0 auto; }
+        .view.active { display: block; }
 
-    .screen { flex: 1; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 70px; }
-    .screen.active { display: flex; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Chat List UI */
-    .chat-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); }
-    .chat-item:active { background: var(--surface-light); }
-    .avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; flex-shrink: 0; overflow: hidden; }
-    .chat-info { flex: 1; margin-left: 14px; overflow: hidden; }
-    .chat-top { display: flex; justify-content: space-between; align-items: center; }
-    .chat-name { font-weight: 600; font-size: 16px; }
-    .chat-last-msg { color: var(--text-dim); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Mobile Bottom Nav */
+        .mobile-nav {
+            position: fixed; bottom: 0; width: 100%; height: 70px;
+            background: rgba(10, 11, 16, 0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; justify-content: space-around; align-items: center; z-index: 1000;
+        }
+        .nav-item { color: var(--text-dim); text-align: center; font-size: 0.7rem; cursor: pointer; transition: 0.3s; }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
 
-    /* Chat Window */
-    #chat-window { position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: none; flex-direction: column; }
-    #msg-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 2px; background: url('[https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png](https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)'); background-blend-mode: overlay; background-color: #070D14; }
-    
-    .bubble { max-width: 85%; padding: 6px 10px; border-radius: 12px; font-size: 15px; position: relative; margin-bottom: 2px; }
-    .bubble.me { align-self: flex-end; background: var(--bubble-me); border-bottom-right-radius: 4px; }
-    .bubble.other { align-self: flex-start; background: var(--bubble-other); border-bottom-left-radius: 4px; }
-    .bubble img { max-width: 100%; border-radius: 8px; cursor: pointer; display: block; margin: 5px 0; }
-    .bubble video { max-width: 100%; border-radius: 8px; display: block; margin: 5px 0; }
-    .bubble .file-box { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; color: white; font-size: 13px; }
-    .meta-row { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; opacity: 0.7; margin-top: 2px; }
-    
-    /* Floating Action Button */
-    #fab { position: fixed; right: 20px; bottom: 80px; width: 56px; height: 56px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer; z-index: 500; }
+        /* Glass Cards */
+        .glass-card {
+            background: var(--card-glass); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px; padding: 1.5rem; margin-bottom: 1.2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-    /* Input Bar */
-    .input-bar { background: var(--surface); padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(0,0,0,0.2); }
-    .input-bar input[type="text"] { flex: 1; background: var(--surface-light); border: none; color: white; padding: 10px 16px; border-radius: 24px; font-size: 15px; }
-    .icon-btn { color: var(--primary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .email-display {
+            background: #000; border-radius: 12px; padding: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-family: monospace; border: 1px solid #1e293b;
+        }
 
-    /* Media Viewer */
-    #media-viewer { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; align-items: center; justify-content: center; }
-    #media-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    #media-viewer .close { position: absolute; top: 20px; right: 20px; color: white; cursor: pointer; }
+        /* Buttons */
+        .btn {
+            background: none; border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer;
+            transition: 0.2s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-full { width: 100%; justify-content: center; }
 
-    /* Call Screen */
-    #call-screen { position: fixed; inset: 0; z-index: 4000; background: #000; display: none; flex-direction: column; }
-    #remote-video { width: 100%; height: 100%; object-fit: cover; }
-    #local-video { position: absolute; top: 20px; right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 2px solid var(--primary); object-fit: cover; }
-    
-    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; }
-    .modal.active { display: flex; }
-    .modal-content { background: var(--surface); width: 100%; max-width: 320px; padding: 20px; border-radius: 12px; text-align: center; }
-    .btn-main { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        /* Email List & OTP */
+        .email-item {
+            padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 12px;
+        }
+        .otp-box {
+            background: linear-gradient(45deg, rgba(0,240,255,0.1), rgba(188,19,254,0.1));
+            border: 1px solid var(--neon-blue); padding: 15px; border-radius: 12px;
+            text-align: center; margin-top: 10px;
+        }
+        .otp-code { font-size: 2.2rem; font-weight: 800; letter-spacing: 6px; color: var(--neon-blue); display: block; margin-bottom: 10px; }
 
-    nav { height: 60px; background: var(--surface); display: flex; border-top: 1px solid rgba(0,0,0,0.2); position: absolute; bottom: 0; width: 100%; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-dim); font-size: 12px; cursor: pointer; }
-    .nav-item.active { color: var(--primary); }
-    .hidden { display: none !important; }
-
-    /* Ticks */
-    .tick { width: 12px; height: 12px; }
-</style>
-
+        /* Toast Notifications */
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--neon-blue); color: #000; padding: 10px 20px;
+            border-radius: 30px; font-weight: bold; z-index: 2000; display: none;
+        }
+    </style>
 </head>
 <body>
-<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
-<div id="sidebar">
-    <div style="padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px; text-align: center;">
-        <label for="dp-upload" style="cursor: pointer; position: relative; display: inline-block;">
-            <img id="side-dp" class="avatar" style="width: 80px; height: 80px; margin: 0 auto 10px;" src="[https://via.placeholder.com/80?text=DP](https://via.placeholder.com/80?text=DP)">
-            <div style="position: absolute; bottom: 5px; right: 5px; background: var(--primary); border-radius: 50%; padding: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
-            <input type="file" id="dp-upload" class="hidden" accept="image/*" onchange="uploadDP(event)">
-        </label>
-        <div id="side-name" style="font-weight: bold; font-size: 18px;">User</div>
-        <div id="side-peer-id" style="font-size: 11px; color: var(--primary); cursor: pointer; margin-top: 5px;" onclick="copyMyID()">ID: ...</div>
-    </div>
-    <div onclick="openModal('group-modal'); toggleSidebar();" style="padding: 12px; cursor: pointer;">New Group</div>
-    <div onclick="promptPeer(); toggleSidebar();" style="padding: 12px; cursor: pointer;">Add Contact</div>
-    <div onclick="clearAllData()" style="padding: 12px; cursor: pointer; color: var(--danger);">Reset Data</div>
-</div>
 
-<div id="setup-screen" class="modal">
-    <div class="modal-content">
-        <h3>Welcome to ChatNet</h3>
-        <input type="text" id="setup-name" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; border:none;" placeholder="Display Name">
-        <button class="btn-main" onclick="startApp()">Get Started</button>
-    </div>
-</div>
+    <div id="toast">Copied!</div>
 
-<div id="incoming-call-modal" class="modal">
-    <div class="modal-content">
-        <h3 id="caller-name">Call Incoming</h3>
-        <div style="display: flex; gap: 15px; margin-top: 20px;">
-            <button class="btn-main" style="background: var(--success); flex:1;" onclick="acceptCall()">Accept</button>
-            <button class="btn-main" style="background: var(--danger); flex:1;" onclick="rejectCall()">Decline</button>
-        </div>
-    </div>
-</div>
-
-<div id="app">
-    <header>
-        <div onclick="toggleSidebar()" style="cursor: pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></div>
-        <h2 id="header-title">ChatNet Pro</h2>
-    </header>
-
-    <section id="chats-screen" class="screen active">
-        <div id="chat-list"></div>
-        <div id="fab" onclick="promptPeer()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
-    </section>
-
-    <section id="calls-screen" class="screen">
-        <div id="call-logs-list" style="padding: 10px;"></div>
-    </section>
-
-    <section id="profile-screen" class="screen">
-        <div style="padding: 20px; text-align: center;">
-            <img id="profile-dp" class="avatar" style="width: 120px; height: 120px; margin: 0 auto 20px;" src="[https://via.placeholder.com/120](https://via.placeholder.com/120)">
-            <h2 id="profile-display-name">...</h2>
-            <p id="profile-id-text" style="color: var(--primary);">ID: ...</p>
-            <button class="btn-main" onclick="copyMyID()">Copy ID</button>
-        </div>
-    </section>
-
-    <div id="chat-window">
-        <header>
-            <div onclick="closeChat()" style="cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></div>
-            <img id="chat-header-dp" class="avatar" style="width: 38px; height: 38px;" src="[https://via.placeholder.com/38](https://via.placeholder.com/38)">
-            <div style="flex: 1; margin-left: 8px;">
-                <div id="chat-header-name" style="font-weight: bold; font-size: 16px;">Name</div>
-                <div id="chat-header-status" style="font-size: 11px; color: var(--status-online);">online</div>
-            </div>
-            <div style="display: flex; gap: 12px;">
-                <div onclick="initiateCall('voice')" class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
-                <div onclick="initiateCall('video')" class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg></div>
-            </div>
-        </header>
-        <div id="msg-area"></div>
-        <div id="typing-indicator" style="padding: 4px 20px; font-size: 11px; color: var(--status-online); height: 18px;"></div>
-        <div class="input-bar">
-            <label for="file-sharing" class="icon-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                <input type="file" id="file-sharing" class="hidden" onchange="shareFile(event)">
-            </label>
-            <input type="text" id="msg-input" placeholder="Message" oninput="broadcastTyping()">
-            <div class="icon-btn" onclick="sendMsg()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></div>
-        </div>
-    </div>
-
-    <nav>
-        <div class="nav-item active" onclick="switchNav('chats', this)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L21 3.5l-1.6 4.9z"></path></svg><span>CHATS</span></div>
-        <div class="nav-item" onclick="switchNav('calls', this)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><span>CALLS</span></div>
-        <div class="nav-item" onclick="switchNav('profile', this)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>PROFILE</span></div>
-    </nav>
-</div>
-
-<div id="call-screen">
-    <div id="call-timer" style="position: absolute; top: 30px; left: 50%; transform: translateX(-50%); font-size: 18px;">00:00</div>
-    <video id="remote-video" autoplay playsinline></video>
-    <video id="local-video" autoplay playsinline muted></video>
-    <div style="position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);">
-        <button onclick="hangupCall()" style="background: var(--danger); border: none; padding: 15px; border-radius: 50%; cursor: pointer;"><svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.987.987 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></button>
-    </div>
-</div>
-
-<div id="media-viewer" onclick="this.style.display='none'">
-    <span class="close">×</span>
-    <img id="viewer-img" src="">
-</div>
-
-<script>
-    const PEER_CONFIG = {
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-        debug: 1
-    };
-
-    let peer, myData, activeChat = null, connections = {}, currentCall = null, localStream = null;
-    let callStartTime;
-    let ringtone = new Tone.PolySynth(Tone.Synth).toDestination();
-    let ringLoop = new Tone.Loop(t => {
-        ringtone.triggerAttackRelease(["C5", "E5"], "8n", t);
-    }, "1n");
-
-    // DB / Storage
-    let groups = JSON.parse(localStorage.getItem('cn_groups') || '{}');
-    let callLogs = JSON.parse(localStorage.getItem('cn_calls') || '[]');
-    let directChats = JSON.parse(localStorage.getItem('cn_directs') || '{}');
-    let profileDP = localStorage.getItem('cn_dp') || '';
-
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('open');
-        document.getElementById('sidebar-overlay').classList.toggle('active');
-    }
-
-    function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-    function startApp() {
-        const name = document.getElementById('setup-name').value.trim();
-        if(!name) return;
-        myData = { name, id: 'CP-' + Math.random().toString(36).substr(2,6).toUpperCase(), dp: profileDP };
-        localStorage.setItem('cn_profile', JSON.stringify(myData));
-        closeModal('setup-screen');
-        initPeer();
-    }
-
-    function initPeer() {
-        peer = new Peer(myData.id, PEER_CONFIG);
-        peer.on('open', id => {
-            updateUIProfiles();
-            renderChats();
-            Object.keys(directChats).forEach(pid => connectToPeer(pid));
-        });
-        peer.on('connection', conn => {
-            setupConnection(conn);
-        });
-        peer.on('call', async call => {
-            currentCall = call;
-            document.getElementById('caller-name').innerText = call.metadata?.name || "Peer";
-            openModal('incoming-call-modal');
-            Tone.start(); ringLoop.start(0); Tone.Transport.start();
-
-            call.on("stream", remoteStream => {
-                document.getElementById('remote-video').srcObject = remoteStream;
-            });
-            call.on("close", () => hangupCall());
-        });
-    }
-
-    function updateUIProfiles() {
-        document.getElementById('side-name').innerText = myData.name;
-        document.getElementById('side-peer-id').innerText = "ID: " + myData.id;
-        document.getElementById('profile-display-name').innerText = myData.name;
-        document.getElementById('profile-id-text').innerText = "My ID: " + myData.id;
-        const dp = profileDP || '[https://via.placeholder.com/80](https://via.placeholder.com/80)';
-        document.getElementById('side-dp').src = dp;
-        document.getElementById('profile-dp').src = dp;
-    }
-
-    function connectToPeer(targetId) {
-        if (connections[targetId] || targetId === myData.id) return;
-        const conn = peer.connect(targetId, { metadata: { name: myData.name, dp: profileDP } });
-        setupConnection(conn);
-    }
-
-    function setupConnection(conn) {
-        conn.on('open', () => {
-            connections[conn.peer] = conn;
-            if (!directChats[conn.peer]) {
-                directChats[conn.peer] = { name: conn.metadata?.name || "User", id: conn.peer, dp: conn.metadata?.dp || '', messages: [] };
-                saveData();
-            } else if(conn.metadata?.dp) {
-                directChats[conn.peer].dp = conn.metadata.dp;
-                saveData();
-            }
-            renderChats();
-            updateOnlineStatus();
-        });
-        conn.on('data', data => {
-            if(data.type === 'typing') { showTyping(data); return; }
-            if(data.type === 'seen') { updateSeen(data); return; }
-            handleIncomingMsg(data, conn.peer);
-            // Send seen status back
-            conn.send({ type: 'seen', senderId: myData.id, msgId: data.id });
-        });
-    }
-
-    function handleIncomingMsg(data, peerId) {
-        const chat = data.groupId ? groups[data.groupId] : directChats[peerId];
-        if(!chat) return;
-        chat.messages.push(data);
-        saveData();
-        renderChats();
-        if (activeChat === (data.groupId || peerId)) {
-            renderMessages();
-            scrollToBottom();
-        }
-    }
-
-    function uploadDP(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            profileDP = reader.result;
-            localStorage.setItem('cn_dp', profileDP);
-            myData.dp = profileDP;
-            localStorage.setItem('cn_profile', JSON.stringify(myData));
-            updateUIProfiles();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function shareFile(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const msg = {
-                id: Date.now(),
-                type: 'file',
-                senderId: myData.id,
-                senderName: myData.name,
-                fileData: reader.result,
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: (file.size / 1024).toFixed(1) + ' KB',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: 'sent'
-            };
-            sendToCurrentChat(msg);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function sendMsg() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        if(!text || !activeChat) return;
-        const msg = {
-            id: Date.now(),
-            type: 'text',
-            senderId: myData.id,
-            senderName: myData.name,
-            text: text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'sent'
-        };
-        sendToCurrentChat(msg);
-        input.value = '';
-    }
-
-    function sendToCurrentChat(msg) {
-        const chat = activeChat.startsWith('GRP') ? groups[activeChat] : directChats[activeChat];
-        chat.messages.push(msg);
-        saveData();
-        if (activeChat.startsWith('GRP')) {
-            Object.values(connections).forEach(c => c.send(msg));
-        } else if (connections[activeChat]) {
-            connections[activeChat].send(msg);
-        }
-        renderMessages();
-        scrollToBottom();
-        renderChats();
-    }
-
-    function renderChats() {
-        const list = document.getElementById('chat-list');
-        list.innerHTML = '';
-        Object.values(directChats).forEach(c => {
-            const lastMsg = c.messages[c.messages.length - 1];
-            list.innerHTML += `
-                <div class="chat-item" onclick="openChat('${c.id}')">
-                    <img class="avatar" src="${c.dp || '[https://via.placeholder.com/48](https://via.placeholder.com/48)'}">
-                    <div class="chat-info">
-                        <div class="chat-top"><span class="chat-name">${c.name}</span><span style="font-size:10px; color:var(--text-dim);">${lastMsg ? lastMsg.time : ''}</span></div>
-                        <div class="chat-last-msg">${lastMsg ? (lastMsg.type === 'file' ? '📎 File' : lastMsg.text) : 'Tap to chat'}</div>
-                    </div>
-                </div>`;
-        });
-    }
-
-    function openChat(id) {
-        activeChat = id;
-        const chat = directChats[id] || groups[id];
-        document.getElementById('chat-header-name').innerText = chat.name;
-        document.getElementById('chat-header-dp').src = chat.dp || '[https://via.placeholder.com/38](https://via.placeholder.com/38)';
-        document.getElementById('chat-window').style.display = 'flex';
-        updateOnlineStatus();
-        renderMessages();
-        scrollToBottom();
-    }
-
-    function renderMessages() {
-        const area = document.getElementById('msg-area');
-        const chat = directChats[activeChat] || groups[activeChat];
-        area.innerHTML = chat.messages.map(m => {
-            const isMe = m.senderId === myData.id;
-            let content = '';
-            if(m.type === 'text') content = `<div>${m.text}</div>`;
-            else if(m.type === 'file') {
-                if(m.fileType.startsWith('image')) content = `<img src="${m.fileData}" onclick="viewImg('${m.fileData}')">`;
-                else if(m.fileType.startsWith('video')) content = `<video src="${m.fileData}" controls></video>`;
-                else content = `<a href="${m.fileData}" download="${m.fileName}" class="file-box">📎 ${m.fileName} <small>${m.fileSize}</small></a>`;
-            }
-            
-            const ticks = isMe ? (m.status === 'seen' ? '✔✔' : '✔') : '';
-            const tickColor = m.status === 'seen' ? 'color:var(--status-online);' : 'color:var(--text-dim);';
-
-            return `
-                <div class="bubble ${isMe ? 'me' : 'other'}">
-                    ${content}
-                    <div class="meta-row">
-                        <span>${m.time}</span>
-                        <span class="tick" style="${tickColor}">${ticks}</span>
-                    </div>
-                </div>`;
-        }).join('');
-    }
-
-    async function initiateCall(callType) {
-        if(!activeChat) return;
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({
-                video: callType === "video",
-                audio: true
-            });
-            document.getElementById('local-video').srcObject = localStream;
-            document.getElementById('call-screen').style.display = 'flex';
-            
-            const call = peer.call(activeChat, localStream, { metadata: { type: callType, name: myData.name } });
-            setupCallHandlers(call);
-        } catch (err) {
-            console.error("Media error:", err);
-        }
-    }
-
-    async function acceptCall() {
-        ringLoop.stop();
-        Tone.Transport.stop();
-        closeModal('incoming-call-modal');
-        
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({
-                video: currentCall.metadata.type === "video",
-                audio: true
-            });
-
-            currentCall.answer(localStream);
-            document.getElementById('local-video').srcObject = localStream;
-            document.getElementById('call-screen').style.display = 'flex';
-            setupCallHandlers(currentCall);
-        } catch (err) {
-            console.error("Media error:", err);
-            currentCall.close();
-        }
-    }
-
-    function setupCallHandlers(call) {
-        currentCall = call;
-        callStartTime = Date.now();
-        startTimer();
-        call.on('stream', remoteStream => {
-            document.getElementById('remote-video').srcObject = remoteStream;
-        });
-        call.on('close', () => hangupCall());
-    }
-
-    function hangupCall() {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-        }
-        document.getElementById('remote-video').srcObject = null;
-        document.getElementById('local-video').srcObject = null;
-        
-        if(currentCall) currentCall.close();
-        document.getElementById('call-screen').style.display = 'none';
-        
-        ringLoop.stop();
-        Tone.Transport.stop();
-        saveCallLog();
-    }
-
-    function rejectCall() { 
-        ringLoop.stop();
-        Tone.Transport.stop(); 
-        closeModal('incoming-call-modal'); 
-        if(currentCall) currentCall.close(); 
-    }
-
-    function startTimer() {
-        const el = document.getElementById('call-timer');
-        const interval = setInterval(() => {
-            if(!currentCall || document.getElementById('call-screen').style.display === 'none') { 
-                clearInterval(interval); 
-                return; 
-            }
-            const sec = Math.floor((Date.now() - callStartTime) / 1000);
-            el.innerText = Math.floor(sec/60).toString().padStart(2,'0') + ":" + (sec%60).toString().padStart(2,'0');
-        }, 1000);
-    }
-
-    function saveCallLog() {
-        const duration = document.getElementById('call-timer').innerText;
-        const log = { name: directChats[activeChat]?.name || "Unknown", duration, time: new Date().toLocaleString() };
-        callLogs.unshift(log);
-        localStorage.setItem('cn_calls', JSON.stringify(callLogs));
-        renderLogs();
-    }
-
-    function renderLogs() {
-        document.getElementById('call-logs-list').innerHTML = callLogs.map(l => `
-            <div class="chat-item">
-                <div class="chat-info">
-                    <div class="chat-top"><b>${l.name}</b> <span>${l.time}</span></div>
-                    <div style="font-size:12px; color:var(--text-dim);">Duration: ${l.duration}</div>
+    <main>
+        <section id="mail-view" class="view active">
+            <h2 style="margin-bottom: 1rem;">Temp Inbox</h2>
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span id="timer" style="color: var(--error); font-size: 0.8rem;">Ready</span>
+                    <button class="btn" style="padding: 8px 12px;" onclick="App.createInbox()">New Inbox</button>
                 </div>
-            </div>`).join('');
-    }
+                <div class="email-display">
+                    <span id="email-addr" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px;">Click New Inbox</span>
+                    <i class="fas fa-copy" onclick="App.copy('email-addr')" style="cursor:pointer; color: var(--neon-blue)"></i>
+                </div>
+            </div>
 
-    function broadcastTyping() {
-        if(connections[activeChat]) connections[activeChat].send({ type: 'typing', name: myData.name });
-    }
+            <div id="email-list">
+                <div style="text-align: center; color: var(--text-dim); margin-top: 50px;">
+                    <i class="fas fa-inbox fa-3x" style="margin-bottom: 15px;"></i>
+                    <p>No messages yet. Waiting for incoming mail...</p>
+                </div>
+            </div>
+        </section>
 
-    function showTyping(data) {
-        if(activeChat === data.senderId || !activeChat) {
-            const el = document.getElementById('typing-indicator');
-            el.innerText = data.name + " is typing...";
-            setTimeout(() => el.innerText = '', 2000);
-        }
-    }
+        <section id="call-view" class="view">
+            <h2 style="margin-bottom: 1rem;">Secure Call</h2>
+            <div class="glass-card">
+                <label style="color: var(--text-dim); font-size: 0.8rem;">Your Peer ID</label>
+                <div class="email-display" style="margin: 8px 0;">
+                    <span id="my-id">Initializing...</span>
+                    <i class="fas fa-copy" onclick="App.copy('my-id')" style="color: var(--neon-blue)"></i>
+                </div>
+            </div>
 
-    function updateSeen(data) {
-        const chat = directChats[data.senderId];
-        if(chat) {
-            chat.messages.forEach(m => { if(m.id <= data.msgId) m.status = 'seen'; });
-            saveData();
-            if(activeChat === data.senderId) renderMessages();
-        }
-    }
+            <div class="glass-card">
+                <input type="text" id="remote-id" placeholder="Enter Friend's ID" style="width:100%; background: #000; border:1px solid #333; color:#fff; padding:15px; border-radius:12px; margin-bottom:15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="btn" onclick="Calls.startCall()"><i class="fas fa-phone"></i> Call</button>
+                    <button class="btn" style="border-color: var(--neon-purple); color: var(--neon-purple);" onclick="Calls.random()"><i class="fas fa-random"></i> Random</button>
+                </div>
+            </div>
 
-    function viewImg(src) {
-        document.getElementById('viewer-img').src = src;
-        document.getElementById('media-viewer').style.display = 'flex';
-    }
+            <div id="call-active" class="glass-card" style="display:none; border-color: var(--success);">
+                <div style="text-align: center;">
+                    <h3 id="call-status">Connected</h3>
+                    <div id="recording-indicator" style="color: var(--error); margin: 10px 0;"><i class="fas fa-record-vinyl fa-spin"></i> Recording...</div>
+                    <button class="btn" style="border-color: var(--error); color: var(--error);" onclick="Calls.endCall()">End Call</button>
+                    <div id="playback-area" style="margin-top:15px; display:none;">
+                        <audio id="audio-out" controls style="width: 100%;"></audio>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    function switchNav(scr, el) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById(scr + '-screen').classList.add('active');
-        el.classList.add('active');
-        document.getElementById('header-title').innerText = scr.toUpperCase();
-        if(scr === 'calls') renderLogs();
-    }
+        <section id="history-view" class="view">
+            <h2 style="margin-bottom: 1rem;">History</h2>
+            <div id="history-container"></div>
+            <button class="btn btn-full" style="margin-top:20px; border-color:var(--error); color:var(--error)" onclick="App.clearHistory()">Clear History</button>
+        </section>
+    </main>
 
-    function copyMyID() { navigator.clipboard.writeText(myData.id); alert("ID Copied!"); }
-    function promptPeer() { const id = prompt("Friend ID:"); if(id) connectToPeer(id); }
-    function closeChat() { document.getElementById('chat-window').style.display = 'none'; activeChat = null; }
-    function scrollToBottom() { const a = document.getElementById('msg-area'); a.scrollTop = a.scrollHeight; }
-    function saveData() { 
-        localStorage.setItem('cn_directs', JSON.stringify(directChats)); 
-        localStorage.setItem('cn_groups', JSON.stringify(groups)); 
-    }
-    function clearAllData() { if(confirm("Clear everything?")) { localStorage.clear(); location.reload(); } }
-    function updateOnlineStatus() { if(activeChat && !activeChat.startsWith('GRP')) { document.getElementById('chat-header-status').innerText = connections[activeChat] ? 'online' : 'offline'; } }
+    <nav class="mobile-nav">
+        <div class="nav-item active" onclick="App.switch('mail-view', this)">
+            <i class="fas fa-envelope"></i><span>Mail</span>
+        </div>
+        <div class="nav-item" onclick="App.switch('call-view', this)">
+            <i class="fas fa-phone-alt"></i><span>Call</span>
+        </div>
+        <div class="nav-item" onclick="App.switch('history-view', this)">
+            <i class="fas fa-history"></i><span>History</span>
+        </div>
+    </nav>
 
-    window.onload = () => {
-        const saved = localStorage.getItem('cn_profile');
-        if (saved) { myData = JSON.parse(saved); initPeer(); } else { openModal('setup-screen'); }
-    };
-</script>
+    <script>
+        const API_KEY = "sk_FllbN62B80svK5hF_waWY0lEYgzVGd2EHeVU70ksxQ7kbSeJe7obqeGMuzlJuxM9va47TR0pL7wJNiOGC";
+        const OTP_REGEX = /\b\d{4,8}\b/;
 
+        const App = {
+            inbox: null,
+            timer: 30 * 60,
+
+            init() {
+                const saved = JSON.parse(localStorage.getItem('nexus_inbox') || 'null');
+                if(saved) this.loadInbox(saved.id, saved.emailAddress);
+                this.renderHistory();
+            },
+
+            async createInbox() {
+                const res = await fetch('https://api.mailslurp.com/inboxes', {
+                    method: 'POST',
+                    headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                this.loadInbox(data.id, data.emailAddress);
+                this.saveHistory(data);
+            },
+
+            loadInbox(id, email) {
+                this.inbox = { id, email };
+                document.getElementById('email-addr').innerText = email;
+                localStorage.setItem('nexus_inbox', JSON.stringify({id, emailAddress: email}));
+                this.startRefresh();
+            },
+
+            startRefresh() {
+                if(window.refreshInt) clearInterval(window.refreshInt);
+                window.refreshInt = setInterval(() => this.checkMail(), 5000);
+                this.checkMail();
+            },
+
+            async checkMail() {
+                if(!this.inbox) return;
+                const res = await fetch(`https://api.mailslurp.com/inboxes/${this.inbox.id}/emails`, {
+                    headers: { 'x-api-key': API_KEY }
+                });
+                const emails = await res.json();
+                this.renderEmails(emails);
+            },
+
+            async renderEmails(emails) {
+                const container = document.getElementById('email-list');
+                if(emails.length === 0) return;
+
+                let html = '';
+                for(let em of emails) {
+                    // Fetch full email content to find hidden OTPs
+                    const fullRes = await fetch(`https://api.mailslurp.com/emails/${em.id}`, {
+                        headers: { 'x-api-key': API_KEY }
+                    });
+                    const fullEm = await fullRes.json();
+                    
+                    const otp = fullEm.body.match(OTP_REGEX) || em.subject.match(OTP_REGEX);
+                    
+                    html += `
+                        <div class="email-item">
+                            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-dim);">
+                                <span>From: ${em.from || 'System'}</span>
+                                <span>${new Date(em.createdAt).toLocaleTimeString()}</span>
+                            </div>
+                            <div style="margin: 8px 0; font-weight:600;">${em.subject}</div>
+                            ${otp ? `
+                                <div class="otp-box">
+                                    <span class="otp-code" id="otp-${em.id}">${otp[0]}</span>
+                                    <button class="btn btn-full" onclick="App.copy('otp-${em.id}')">Copy Code</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            },
+
+            copy(id) {
+                const text = document.getElementById(id).innerText;
+                navigator.clipboard.writeText(text);
+                const t = document.getElementById('toast');
+                t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 2000);
+            },
+
+            switch(viewId, el) {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.getElementById(viewId).classList.add('active');
+                el.classList.add('active');
+            },
+
+            saveHistory(data) {
+                let history = JSON.parse(localStorage.getItem('nexus_history') || '[]');
+                history.unshift(data);
+                localStorage.setItem('nexus_history', JSON.stringify(history.slice(0, 10)));
+                this.renderHistory();
+            },
+
+            renderHistory() {
+                const history = JSON.parse(localStorage.getItem('nexus_history') || '[]');
+                document.getElementById('history-container').innerHTML = history.map(h => `
+                    <div class="glass-card" style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.8rem;">${h.emailAddress}</span>
+                        <button class="btn" style="padding:5px 10px;" onclick="App.loadInbox('${h.id}', '${h.emailAddress}')">Use</button>
+                    </div>
+                `).join('');
+            },
+
+            clearHistory() {
+                localStorage.clear();
+                location.reload();
+            }
+        };
+
+        const Calls = {
+            peer: null,
+            conn: null,
+            recorder: null,
+            chunks: [],
+
+            init() {
+                this.peer = new Peer('nexus-' + Math.floor(Math.random()*10000));
+                this.peer.on('open', id => document.getElementById('my-id').innerText = id);
+                this.peer.on('call', async call => {
+                    if(confirm("Incoming Call?")) {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        call.answer(stream);
+                        this.handleStream(call);
+                    }
+                });
+            },
+
+            async startCall() {
+                const id = document.getElementById('remote-id').value;
+                if(!id) return;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const call = this.peer.call(id, stream);
+                this.handleStream(call);
+            },
+
+            handleStream(call) {
+                document.getElementById('call-active').style.display = 'block';
+                call.on('stream', remoteStream => {
+                    const audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                    this.startRec(remoteStream);
+                });
+            },
+
+            startRec(stream) {
+                this.chunks = [];
+                this.recorder = new MediaRecorder(stream);
+                this.recorder.ondataavailable = e => this.chunks.push(e.data);
+                this.recorder.onstop = () => {
+                    const blob = new Blob(this.chunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('audio-out').src = url;
+                    document.getElementById('playback-area').style.display = 'block';
+                };
+                this.recorder.start();
+            },
+
+            endCall() {
+                location.reload(); // Simplest way to reset WebRTC state
+            },
+
+            random() {
+                alert("Searching for users... No matches found in your region yet.");
+            }
+        };
+
+        App.init();
+        Calls.init();
+    </script>
 </body>
 </html>
